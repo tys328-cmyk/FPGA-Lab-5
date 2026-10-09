@@ -1,0 +1,31 @@
+`timescale 1ns/1ps
+module tb_divider;
+    reg clk=0, reset=0;
+    wire clk_25mhz;
+    integer i;
+    reg [1:0] expected=0;
+    time first_rise, second_rise;
+    always #5 clk=~clk; // 10 ns period = 100 MHz
+    clock_divider dut(clk,reset,clk_25mhz);
+    initial begin
+        $dumpfile("divider.vcd"); $dumpvars(0,tb_divider);
+        #1 reset=1; #1;
+        if(clk_25mhz !== 0) $fatal(1,"Divider reset failed");
+        @(negedge clk); reset=0;
+        for(i=0;i<16;i=i+1) begin
+            @(posedge clk); expected=expected+1'b1; #1;
+            if(clk_25mhz !== expected[1]) $fatal(1,"Divider sequence failed");
+        end
+        @(posedge clk_25mhz); first_rise=$time;
+        @(negedge clk_25mhz);
+        if($time-first_rise != 20) $fatal(1,"High width must be 20 ns");
+        @(posedge clk_25mhz); second_rise=$time;
+        if(second_rise-first_rise != 40) $fatal(1,"Period must be 40 ns");
+        #2 reset=1; #1;
+        if(clk_25mhz !== 0) $fatal(1,"Asynchronous reset failed");
+        $display("PASS tb_divider: 40 ns period, 25 MHz, 50%% duty");
+        $finish;
+    end
+endmodule
+
+
