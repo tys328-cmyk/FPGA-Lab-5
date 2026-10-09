@@ -1,0 +1,34 @@
+`timescale 1ns/1ps
+module tb_d;
+    reg clk=0, reset=0, d=0;
+    wire q_sync, q_async;
+    always #5 clk=~clk;
+    d_ff_sync sync_dut(clk,reset,d,q_sync);
+    d_ff_async async_dut(clk,reset,d,q_async);
+    task check;
+        input es, ea;
+        begin
+            if(q_sync !== es || q_async !== ea)
+                $fatal(1,"D mismatch sync=%b async=%b",q_sync,q_async);
+        end
+    endtask
+    initial begin
+        $dumpfile("d.vcd"); $dumpvars(0,tb_d);
+        #1 reset=1;
+        @(posedge clk); #1; check(0,0);
+        @(negedge clk); reset=0; d=1;
+        @(posedge clk); #1; check(1,1);
+        // Assert reset between edges: only asynchronous output clears immediately.
+        #1 reset=1; #1; check(1,0);
+        @(posedge clk); #1; check(0,0);
+        @(negedge clk); reset=0;
+        #1; check(0,0);
+        @(posedge clk); #1; check(1,1);
+        @(negedge clk); d=0;
+        #1; check(1,1);
+        @(posedge clk); #1; check(0,0);
+        $display("PASS tb_d"); $finish;
+    end
+endmodule
+
+
