@@ -1,0 +1,38 @@
+`timescale 1ns/1ps
+module tb_sr;
+    reg clk=0, s=0, r=0;
+    wire q_latch, qb_latch, q_ff, qb_ff;
+    always #5 clk=~clk;
+    sr_latch latch_dut(s,r,q_latch,qb_latch);
+    sr_ff ff_dut(clk,s,r,q_ff,qb_ff);
+    task check;
+        input el, ef;
+        begin
+            if(q_latch !== el || q_ff !== ef)
+                $fatal(1,"SR mismatch: latch=%b ff=%b",q_latch,q_ff);
+        end
+    endtask
+    initial begin
+        $dumpfile("sr.vcd"); $dumpvars(0,tb_sr);
+        #1 r=1; #1; if(q_latch !== 0) $fatal(1,"Latch reset failed");
+        @(posedge clk); #1; check(0,0);
+        @(negedge clk); #1 r=0; s=1; #1; check(1,0);
+        @(posedge clk); #1; check(1,1);
+        @(negedge clk); s=0;
+        @(posedge clk); #1; check(1,1);
+        @(negedge clk); #1 r=1; #1; check(0,1);
+        @(posedge clk); #1; check(0,0);
+        @(negedge clk); r=0;
+        @(posedge clk); #1; check(0,0);
+        @(negedge clk); s=1; r=1;
+        @(posedge clk); #1;
+        if(q_latch !== 0 || qb_latch !== 0 || q_ff !== 1'bx)
+            $fatal(1,"Invalid SR behavior mismatch");
+        // Recover by keeping reset asserted rather than releasing both together.
+        @(negedge clk); s=0;
+        @(posedge clk); #1; check(0,0);
+        $display("PASS tb_sr"); $finish;
+    end
+endmodule
+
+
