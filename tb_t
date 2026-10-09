@@ -1,0 +1,33 @@
+`timescale 1ns/1ps
+module tb_t_counter;
+    reg clk=0, reset=0, t=0;
+    wire q_t;
+    wire [2:0] q_count;
+    integer i;
+    reg [2:0] expected_count=0;
+    reg expected_t=0;
+    always #5 clk=~clk;
+    t_ff t_dut(clk,reset,t,q_t);
+    counter3 counter_dut(clk,reset,q_count);
+    initial begin
+        $dumpfile("t_counter.vcd"); $dumpvars(0,tb_t_counter);
+        #1 reset=1; #1;
+        if(q_t !== 0 || q_count !== 0) $fatal(1,"Reset failed");
+        @(negedge clk); reset=0;
+        for(i=0;i<18;i=i+1) begin
+            t=(i>=2 && i<14);
+            @(posedge clk);
+            expected_count=expected_count+1'b1;
+            if(t) expected_t=~expected_t;
+            #1;
+            if(q_t !== expected_t || q_count !== expected_count)
+                $fatal(1,"T/counter mismatch at iteration %0d",i);
+            @(negedge clk);
+        end
+        #1 reset=1; #1;
+        if(q_t !== 0 || q_count !== 0) $fatal(1,"Mid-run reset failed");
+        $display("PASS tb_t_counter"); $finish;
+    end
+endmodule
+
+
