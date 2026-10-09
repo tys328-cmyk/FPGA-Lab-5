@@ -1,0 +1,53 @@
+`timescale 1ns/1ps
+// NOR SR latch: S=R=1 forces Q=Qbar=0; release is undefined.
+module sr_latch(input s, r, output q, qbar);
+    nor (q, r, qbar);
+    nor (qbar, s, q);
+endmodule
+
+module sr_ff(input clk, s, r, output reg q, output qbar);
+    assign qbar = ~q;
+    always @(posedge clk) begin
+        case ({s,r})
+            2'b00: q <= q;
+            2'b01: q <= 1'b0;
+            2'b10: q <= 1'b1;
+            // Invalid input: X is a simulation marker, not a hardware state.
+            2'b11: q <= 1'bx;
+        endcase
+    end
+endmodule
+
+module d_ff_sync(input clk, reset, d, output reg q);
+    always @(posedge clk)
+        if (reset) q <= 1'b0;
+        else q <= d;
+endmodule
+
+module d_ff_async(input clk, reset, d, output reg q);
+    always @(posedge clk or posedge reset)
+        if (reset) q <= 1'b0;
+        else q <= d;
+endmodule
+
+module t_ff(input clk, reset, t, output reg q);
+    always @(posedge clk or posedge reset)
+        if (reset) q <= 1'b0;
+        else if (t) q <= ~q;
+endmodule
+
+module counter3(input clk, reset, output [2:0] q);
+    t_ff bit0(.clk(clk), .reset(reset), .t(1'b1), .q(q[0]));
+    t_ff bit1(.clk(clk), .reset(reset), .t(q[0]), .q(q[1]));
+    t_ff bit2(.clk(clk), .reset(reset), .t(q[1]&q[0]), .q(q[2]));
+endmodule
+
+module clock_divider(input clk, reset, output clk_25mhz);
+    reg [1:0] count;
+    always @(posedge clk or posedge reset)
+        if (reset) count <= 2'b00;
+        else count <= count + 2'b01;
+    assign clk_25mhz = count[1];
+endmodule
+
+
